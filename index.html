@@ -55,7 +55,7 @@
     <div class="drop-area" id="dropArea" onclick="document.getElementById('fileInput').click()">
       <div style="font-size:32px">☁️</div>
       <strong>クリックまたはドラッグ＆ドロップ</strong>
-      <p>バイトル・マイナビ・e介護転職・キューメイト・求人ボックス・自社・エン派遣のCSVファイルを選択（複数可）</p>
+      <p>バイトル・マイナビ・e介護転職・キューメイト・求人ボックス・自社のCSVファイルを選択（複数可）</p>
       <input type="file" id="fileInput" accept=".csv" multiple>
     </div>
     <div class="supported">
@@ -88,24 +88,19 @@ const OUTPUT_COLS = ['応募日','氏名（漢字）','カナ','性別','生年�
 
 const OFFICE_MAP = {
   '青森県':'青森オフィス','岩手県':'盛岡オフィス','宮城県':'仙台オフィス','秋田県':'盛岡オフィス',
-  '山形県':'仙台オフィス','埼玉県':'新宿オフィス','千葉県':'千葉オフィス','茨城県':'千葉オフィス',
+  '山形県':'山形オフィス','埼玉県':'新宿オフィス','群馬県':'高崎オフィス','千葉県':'千葉オフィス','茨城県':'千葉オフィス',
   '東京都':'新宿オフィス','神奈川県':'横浜オフィス','新潟県':'新潟オフィス','富山県':'金沢オフィス',
   '石川県':'金沢オフィス','福井県':'金沢オフィス','岐阜県':'名古屋オフィス','愛知県':'名古屋オフィス',
   '三重県':'名古屋オフィス','滋賀県':'名古屋オフィス','京都府':'京都オフィス','大阪府':'梅田オフィス',
   '兵庫県':'神戸オフィス','福岡県':'福岡オフィス','佐賀県':'福岡オフィス','鹿児島県':'鹿児島オフィス',
 };
 
-const STATE_MAP = {
-  1:'北海道',2:'青森県',3:'岩手県',4:'宮城県',5:'秋田県',6:'山形県',7:'福島県',
-  8:'茨城県',9:'栃木県',10:'群馬県',11:'埼玉県',12:'千葉県',13:'東京都',14:'神奈川県',
-  15:'新潟県',16:'富山県',17:'石川県',18:'福井県',19:'山梨県',20:'長野県',
-  21:'岐阜県',22:'静岡県',23:'愛知県',24:'三重県',25:'滋賀県',26:'京都府',
-  27:'大阪府',28:'兵庫県',29:'奈良県',30:'和歌山県',31:'鳥取県',32:'島根県',
-  33:'岡山県',34:'広島県',35:'山口県',36:'徳島県',37:'香川県',38:'愛媛県',39:'高知県',
-  40:'福岡県',41:'佐賀県',42:'長崎県',43:'熊本県',44:'大分県',45:'宮崎県',
-  46:'鹿児島県',47:'沖縄県',
-};
-const SEX_MAP = { 1:'男性', 2:'女性' };
+function formatDob(dob) {
+  if (!dob) return '';
+  const cleaned = dob.split('(')[0].trim();
+  const m = cleaned.match(/(\d{4})\/(\d{2})\/(\d{2})/);
+  return m ? `${m[1]}/${parseInt(m[2])}/${parseInt(m[3])}` : cleaned;
+}
 
 function calcAge(dob) {
   if (!dob) return '';
@@ -118,7 +113,9 @@ function calcAge(dob) {
   return age;
 }
 
-function nightShift(text) { return (text || '').includes('夜勤') ? '○' : ''; }
+function nightShift(text) {
+  return (text || '').includes('夜勤') ? '○' : '';
+}
 
 function addOffice(mapped) {
   mapped['対応オフィス'] = OFFICE_MAP[mapped['都道府県名']] || '';
@@ -126,10 +123,23 @@ function addOffice(mapped) {
 }
 
 // ── エン派遣 ──
+const STATE_MAP = {
+  1:'北海道',2:'青森県',3:'岩手県',4:'宮城県',5:'秋田県',6:'山形県',7:'福島県',
+  8:'茨城県',9:'栃木県',10:'群馬県',11:'埼玉県',12:'千葉県',13:'東京都',14:'神奈川県',
+  15:'新潟県',16:'富山県',17:'石川県',18:'福井県',19:'山梨県',20:'長野県',
+  21:'岐阜県',22:'静岡県',23:'愛知県',24:'三重県',25:'滋賀県',26:'京都府',
+  27:'大阪府',28:'兵庫県',29:'奈良県',30:'和歌山県',31:'鳥取県',32:'島根県',
+  33:'岡山県',34:'広島県',35:'山口県',36:'徳島県',37:'香川県',38:'愛媛県',39:'高知県',
+  40:'福岡県',41:'佐賀県',42:'長崎県',43:'熊本県',44:'大分県',45:'宮崎県',
+  46:'鹿児島県',47:'沖縄県',
+};
+const SEX_MAP = { 1:'男性', 2:'女性' };
+
 function detectEnhaken(h) { return h.includes('applyDateTime') && h.includes('surname') && h.includes('surnameKana'); }
 function mapEnhaken(r) {
   const dob = r['birthDate'] || '';
   const pref = STATE_MAP[parseInt(r['stateID'])] || '';
+  const jobName = r['jobName'] || '';
   return addOffice({
     '応募日':     (r['applyDateTime'] || '').split(' ')[0],
     '氏名（漢字）': ((r['surname'] || '') + '　' + (r['givenname'] || '')).trim(),
@@ -141,7 +151,7 @@ function mapEnhaken(r) {
     '市区町村名':  r['municipality'] || '',
     '連絡先TEL':  (r['tel'] || r['mbTel'] || '').toString(),
     '掲載プラン':  '',
-    '夜勤専従':    nightShift(r['jobName']),
+    '夜勤専従':    nightShift(jobName),
     '媒体':       'エン派遣',
   });
 }
@@ -174,8 +184,9 @@ function mapMynavi(r) {
   const prefMatch = addr.match(/^(東京都|北海道|(?:大阪|京都)府|.{2,3}県)/);
   const pref = r['勤務地(1階層目)'] || (prefMatch ? prefMatch[1] : '');
   const city = r['勤務地(2階層目)'] || (prefMatch ? addr.slice((prefMatch[1]||'').length).split(/[0-9０-９]/)[0] : '');
-  const dob = r['生年月日'] || '';
+  const jobTitle = r['募集職種名'] || '';
   const plan = r['企画名'] || '';
+  const dob = r['生年月日'] || '';
   return addOffice({
     '応募日':     (r['応募日時'] || '').split(' ')[0],
     '氏名（漢字）': (r['氏名'] || '').replace(/　/g, ' ').trim(),
@@ -187,7 +198,7 @@ function mapMynavi(r) {
     '市区町村名':  city,
     '連絡先TEL':  r['電話番号'] || '',
     '掲載プラン':  plan,
-    '夜勤専従':    nightShift(r['募集職種名']) || nightShift(plan),
+    '夜勤専従':    nightShift(jobTitle) || nightShift(plan),
     '媒体':       'マイナビ',
   });
 }
@@ -235,231 +246,4 @@ function mapQmate(r) {
 }
 
 // ── 求人ボックス ──
-function detectQbox(h) { return h.includes('応募No') && h.includes('求人タイトル') && h.includes('氏名'); }
-function mapQbox(r) {
-  const rawName = r['氏名'] || '';
-  const kanaMatch = rawName.match(/（([^）]+)）/);
-  const kana = kanaMatch ? kanaMatch[1].trim() : '';
-  const name = rawName.replace(/（[^）]*）/, '').trim();
-  const rawDob = r['生年月日'] || '';
-  const ageMatch = rawDob.match(/\((\d+)歳\)/);
-  const dob = rawDob.replace(/\s*\(.+\)/, '').trim().replace(/(\d{4})年(\d{2})月(\d{2})日/, (_, y, m, d) => `${y}/${parseInt(m)}/${parseInt(d)}`);
-  const addr = r['住所'] || '';
-  const prefMatch = addr.match(/^(東京都|北海道|(?:大阪|京都)府|.{2,3}県)/);
-  const pref = prefMatch ? prefMatch[1] : '';
-  return addOffice({
-    '応募日':     (r['応募日時'] || '').split(' ')[0],
-    '氏名（漢字）': name,
-    'カナ':       kana,
-    '性別':       r['性別'] || '',
-    '生年月日':    dob,
-    '年齢':       ageMatch ? ageMatch[1] : calcAge(dob),
-    '都道府県名':  pref,
-    '市区町村名':  pref ? addr.slice(pref.length).split(/[0-9０-９]/)[0] : '',
-    '連絡先TEL':  (r['電話番号'] || '').toString(),
-    '掲載プラン':  '',
-    '夜勤専従':    nightShift(r['求人タイトル']),
-    '媒体':       '求人ボックス',
-  });
-}
-
-// ── 自社（会員登録） ──
-function detectOwnMember(h) { return h.includes('ユーザーID') && h.includes('携帯電話番号') && h.includes('作成日'); }
-function mapOwnMember(r) {
-  const rawDob = (r['生年月日'] || '').trim();
-  const dob = rawDob ? rawDob.split('(')[0].trim().replace(/(\d{4})\/(\d{2})\/(\d{2})/, (_, y, m, d) => `${y}/${parseInt(m)}/${parseInt(d)}`) : '';
-  return addOffice({
-    '応募日':     (r['作成日'] || '').split(' ')[0],
-    '氏名（漢字）': ((r['姓'] || '') + '　' + (r['名'] || '')).trim(),
-    'カナ':       ((r['姓(カナ)'] || '') + '　' + (r['名(カナ)'] || '')).trim(),
-    '性別':       r['性別'] || '',
-    '生年月日':    dob,
-    '年齢':       calcAge(dob),
-    '都道府県名':  r['都道府県'] || '',
-    '市区町村名':  r['市区町村'] || '',
-    '連絡先TEL':  r['携帯電話番号'] || '',
-    '掲載プラン':  '',
-    '夜勤専従':    nightShift(r['希望シフト']),
-    '媒体':       '自社（会員登録）',
-  });
-}
-
-// ── 自社（求人応募） ──
-function detectOwn(h) { return h.includes('応募ID') && h.includes('応募求人ID') && h.includes('姓(カナ)'); }
-function mapOwn(r) {
-  const dob = r['生年月日'] || '';
-  return addOffice({
-    '応募日':     (r['応募日時'] || '').split(' ')[0],
-    '氏名（漢字）': ((r['姓'] || '') + '　' + (r['名'] || '')).trim(),
-    'カナ':       ((r['姓(カナ)'] || '') + '　' + (r['名(カナ)'] || '')).trim(),
-    '性別':       '',
-    '生年月日':    dob,
-    '年齢':       calcAge(dob),
-    '都道府県名':  r['都道府県'] || '',
-    '市区町村名':  r['市区町村'] || '',
-    '連絡先TEL':  r['電話番号'] || '',
-    '掲載プラン':  '',
-    '夜勤専従':    nightShift(r['応募求人']),
-    '媒体':       '自社',
-  });
-}
-
-function detectMedia(h) {
-  if (detectEnhaken(h)) return 'enhaken';
-  if (detectOwnMember(h)) return 'own_member';
-  if (detectOwn(h)) return 'own';
-  if (detectBaitoru(h)) return 'baitoru';
-  if (detectMynavi(h)) return 'mynavi';
-  if (detectEkaigo(h)) return 'ekaigo';
-  if (detectQmate(h)) return 'qmate';
-  if (detectQbox(h)) return 'qbox';
-  return 'unknown';
-}
-
-function parseCSV(text) {
-  const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  const delim = normalized.split('\n')[0].includes('\t') ? '\t' : ',';
-  function tokenize(src, sep) {
-    const records = [];
-    let fields = [], cur = '', inQ = false, i = 0;
-    while (i < src.length) {
-      const c = src[i];
-      if (inQ) {
-        if (c === '"') { if (src[i+1] === '"') { cur += '"'; i += 2; } else { inQ = false; i++; } }
-        else { cur += c; i++; }
-      } else {
-        if (c === '"') { inQ = true; i++; }
-        else if (c === sep) { fields.push(cur); cur = ''; i++; }
-        else if (c === '\n') {
-          fields.push(cur); cur = '';
-          if (fields.length > 1) records.push(fields);
-          fields = []; i++;
-        } else { cur += c; i++; }
-      }
-    }
-    if (cur || fields.length) { fields.push(cur); if (fields.length > 1) records.push(fields); }
-    return records;
-  }
-  const records = tokenize(normalized, delim);
-  if (records.length < 2) return null;
-  const headers = records[0].map(h => h.trim());
-  const rows = records.slice(1).filter(r => r.some(v => v.trim())).map(vals => {
-    const row = {};
-    headers.forEach((h, i) => { row[h] = (vals[i] || '').trim(); });
-    return row;
-  });
-  return { headers, rows };
-}
-
-let allRows = [], fileData = [];
-
-function processFile(file, text) {
-  const parsed = parseCSV(text);
-  if (!parsed) return { count: 0, media: 'unknown' };
-  const media = detectMedia(parsed.headers);
-  let count = 0;
-  for (const row of parsed.rows) {
-    let mapped = null;
-    if (media === 'enhaken') mapped = mapEnhaken(row);
-    else if (media === 'own_member') mapped = mapOwnMember(row);
-    else if (media === 'own') mapped = mapOwn(row);
-    else if (media === 'baitoru') mapped = mapBaitoru(row);
-    else if (media === 'mynavi') mapped = mapMynavi(row);
-    else if (media === 'ekaigo') mapped = mapEkaigo(row);
-    else if (media === 'qmate') mapped = mapQmate(row);
-    else if (media === 'qbox') mapped = mapQbox(row);
-    if (mapped) { allRows.push(mapped); count++; }
-  }
-  return { count, media };
-}
-
-function badgeClass(m) {
-  const map = { enhaken:'badge-enhaken', baitoru:'badge-baitoru', mynavi:'badge-mynavi', ekaigo:'badge-ekaigo', qmate:'badge-qmate', qbox:'badge-qbox', own:'badge-own', own_member:'badge-own' };
-  return map[m] || 'badge-unknown';
-}
-function mediaLabel(m) {
-  const map = { enhaken:'エン派遣', baitoru:'バイトル', mynavi:'マイナビ', ekaigo:'e介護転職', qmate:'キューメイト', qbox:'求人ボックス', own:'自社', own_member:'自社（会員登録）' };
-  return map[m] || '不明';
-}
-
-function renderTable() {
-  const tbl = document.getElementById('resultTable');
-  let html = '<thead><tr>' + OUTPUT_COLS.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
-  for (const row of allRows.slice(0, 200)) {
-    html += '<tr>' + OUTPUT_COLS.map(c => `<td>${row[c] ?? ''}</td>`).join('') + '</tr>';
-  }
-  html += '</tbody>';
-  tbl.innerHTML = html;
-}
-
-function renderStats() {
-  const byMedia = {};
-  for (const r of allRows) byMedia[r['媒体']] = (byMedia[r['媒体']] || 0) + 1;
-  let html = `<div class="stat"><div class="num">${allRows.length}</div><div class="label">合計応募数</div></div>`;
-  for (const [m, n] of Object.entries(byMedia)) {
-    html += `<div class="stat"><div class="num">${n}</div><div class="label">${m}</div></div>`;
-  }
-  document.getElementById('stats').innerHTML = html;
-}
-
-function downloadCSV() {
-  const BOM = '\uFEFF';
-  const header = OUTPUT_COLS.join(',');
-  const rows = allRows.map(r => OUTPUT_COLS.map(c => `"${(r[c] ?? '').toString().replace(/"/g,'""')}"`).join(','));
-  const csv = BOM + [header, ...rows].join('\r\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const d = new Date();
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `応募データ統合_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => { URL.revokeObjectURL(url); document.body.removeChild(a); }, 100);
-}
-
-async function handleFiles(files) {
-  for (const file of files) {
-    if (!file.name.endsWith('.csv')) continue;
-    const text = await new Promise(res => {
-      const r = new FileReader();
-      r.onload = e => {
-        const t = e.target.result;
-        if ((t.match(/\uFFFD/g) || []).length > 5) {
-          const r2 = new FileReader();
-          r2.onload = e2 => res(e2.target.result);
-          r2.readAsText(file, 'Shift-JIS');
-        } else res(t);
-      };
-      r.readAsText(file, 'UTF-8');
-    });
-    const { count, media } = processFile(file, text);
-    fileData.push({ name: file.name, count, media });
-  }
-  document.getElementById('fileList').innerHTML = fileData.map(f =>
-    `<div class="file-item"><span>📄 ${f.name}</span><span><span class="file-badge ${badgeClass(f.media)}">${mediaLabel(f.media)}</span> &nbsp; ${f.count}件</span></div>`
-  ).join('');
-  if (allRows.length > 0) {
-    allRows.sort((a, b) => {
-      const parse = s => {
-        if (!s) return 0;
-        const m = s.match(/(\d{4})\/(\d{1,2})\/(\d{1,2})(?:\s+(\d{1,2}):(\d{2}))?/);
-        if (!m) return 0;
-        return new Date(m[1], m[2]-1, m[3], m[4]||0, m[5]||0).getTime();
-      };
-      return parse(b['応募日']) - parse(a['応募日']);
-    });
-    document.getElementById('resultCard').style.display = '';
-    renderStats();
-    renderTable();
-  }
-}
-
-document.getElementById('fileInput').addEventListener('change', e => handleFiles(e.target.files));
-const da = document.getElementById('dropArea');
-da.addEventListener('dragover', e => { e.preventDefault(); da.style.background = '#eff6ff'; });
-da.addEventListener('dragleave', () => { da.style.background = ''; });
-da.addEventListener('drop', e => { e.preventDefault(); da.style.background = ''; handleFiles(e.dataTransfer.files); });
-</script>
-</body>
-</html>
+function detectQbox(h) { return h.includes('応募No') && h.includ
