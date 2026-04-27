@@ -88,11 +88,12 @@ const OUTPUT_COLS = ['応募日','氏名（漢字）','カナ','性別','生年�
 
 const OFFICE_MAP = {
   '青森県':'青森オフィス','岩手県':'盛岡オフィス','宮城県':'仙台オフィス','秋田県':'盛岡オフィス',
-  '山形県':'仙台オフィス','埼玉県':'新宿オフィス','千葉県':'千葉オフィス','茨城県':'千葉オフィス',
-  '東京都':'新宿オフィス','神奈川県':'横浜オフィス','新潟県':'新潟オフィス','富山県':'金沢オフィス',
-  '石川県':'金沢オフィス','福井県':'金沢オフィス','岐阜県':'名古屋オフィス','愛知県':'名古屋オフィス',
-  '三重県':'名古屋オフィス','滋賀県':'名古屋オフィス','京都府':'京都オフィス','大阪府':'梅田オフィス',
-  '兵庫県':'神戸オフィス','福岡県':'福岡オフィス','佐賀県':'福岡オフィス','鹿児島県':'鹿児島オフィス',
+  '山形県':'山形オフィス','群馬県':'高崎オフィス','埼玉県':'新宿オフィス','千葉県':'千葉オフィス',
+  '茨城県':'千葉オフィス','東京都':'新宿オフィス','神奈川県':'横浜オフィス','新潟県':'新潟オフィス',
+  '富山県':'金沢オフィス','石川県':'金沢オフィス','福井県':'金沢オフィス','岐阜県':'名古屋オフィス',
+  '愛知県':'名古屋オフィス','三重県':'名古屋オフィス','滋賀県':'名古屋オフィス','京都府':'京都オフィス',
+  '大阪府':'梅田オフィス','兵庫県':'神戸オフィス','福岡県':'福岡オフィス','佐賀県':'福岡オフィス',
+  '鹿児島県':'鹿児島オフィス',
 };
 
 const STATE_MAP = {
@@ -125,7 +126,6 @@ function addOffice(mapped) {
   return mapped;
 }
 
-// ── エン派遣 ──
 function detectEnhaken(h) { return h.includes('applyDateTime') && h.includes('surname') && h.includes('surnameKana'); }
 function mapEnhaken(r) {
   const dob = r['birthDate'] || '';
@@ -146,7 +146,6 @@ function mapEnhaken(r) {
   });
 }
 
-// ── バイトル ──
 function detectBaitoru(h) { return h.includes('応募受付先ID') && h.includes('氏名（漢字）'); }
 function mapBaitoru(r) {
   const ns = ['業務名','募集1_職種1','募集1_職種2','掲載プラン','応募職種'].some(f => nightShift(r[f]) === '○') ? '○' : '';
@@ -167,7 +166,6 @@ function mapBaitoru(r) {
   });
 }
 
-// ── マイナビ ──
 function detectMynavi(h) { return h.includes('氏名') && h.includes('ふりがな') && h.includes('掲載開始日'); }
 function mapMynavi(r) {
   const addr = r['住所'] || '';
@@ -192,7 +190,6 @@ function mapMynavi(r) {
   });
 }
 
-// ── e介護転職 ──
 function detectEkaigo(h) { return h.includes('エントリーID') && h.includes('応募勤務地'); }
 function mapEkaigo(r) {
   const dob = r['生年月日'] || '';
@@ -212,7 +209,6 @@ function mapEkaigo(r) {
   });
 }
 
-// ── キューメイト ──
 function detectQmate(h) { return h.includes('UID') && h.includes('セイ') && h.includes('応募経路|必須'); }
 function mapQmate(r) {
   const name = ((r['姓|必須'] || r['姓'] || '') + '　' + (r['名|必須'] || r['名'] || '')).trim();
@@ -234,7 +230,6 @@ function mapQmate(r) {
   });
 }
 
-// ── 求人ボックス ──
 function detectQbox(h) { return h.includes('応募No') && h.includes('求人タイトル') && h.includes('氏名'); }
 function mapQbox(r) {
   const rawName = r['氏名'] || '';
@@ -263,7 +258,6 @@ function mapQbox(r) {
   });
 }
 
-// ── 自社（会員登録） ──
 function detectOwnMember(h) { return h.includes('ユーザーID') && h.includes('携帯電話番号') && h.includes('作成日'); }
 function mapOwnMember(r) {
   const rawDob = (r['生年月日'] || '').trim();
@@ -284,7 +278,6 @@ function mapOwnMember(r) {
   });
 }
 
-// ── 自社（求人応募） ──
 function detectOwn(h) { return h.includes('応募ID') && h.includes('応募求人ID') && h.includes('姓(カナ)'); }
 function mapOwn(r) {
   const dob = r['生年月日'] || '';
