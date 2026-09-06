@@ -34,6 +34,7 @@
   .badge-ekaigo { background: #dcfce7; color: #166534; }
   .badge-qmate { background: #fef9c3; color: #854d0e; }
   .badge-qbox { background: #ede9fe; color: #5b21b6; }
+  .badge-shufujob { background: #ffe4e6; color: #9f1239; }
   .badge-unknown { background: #f3f4f6; color: #6b7280; }
   .table-wrap { overflow-x: auto; margin-top: 12px; }
   table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -59,7 +60,7 @@
     <div class="drop-area" id="dropArea" onclick="document.getElementById('fileInput').click()">
       <div style="font-size:32px">☁️</div>
       <strong>クリックまたはドラッグ＆ドロップ</strong>
-      <p>バイトル・マイナビ・e介護転職・キューメイト・求人ボックス・自社・エン派遣のCSVファイルを選択（複数可）</p>
+      <p>バイトル・マイナビ・e介護転職・キューメイト・求人ボックス・主婦JOB・自社・エン派遣のCSVファイルを選択（複数可）</p>
       <input type="file" id="fileInput" accept=".csv" multiple>
     </div>
     <div class="supported">
@@ -71,6 +72,7 @@
       <span class="file-badge badge-ekaigo">e介護転職</span>
       <span class="file-badge badge-qmate">キューメイト</span>
       <span class="file-badge badge-qbox">求人ボックス</span>
+      <span class="file-badge badge-shufujob">主婦JOB</span>
     </div>
     <div class="file-list" id="fileList"></div>
   </div>
@@ -277,6 +279,31 @@ function mapQbox(r) {
   });
 }
 
+function detectShufujob(h) { return h.includes('求職者ID') && h.includes('お住まいエリア（都道府県）') && h.includes('お名前（フリガナ）'); }
+// 主婦JOB：電話番号が「電話番号:09012345678」のようにラベル付きで入るため除去する
+function shufujobTel(v) {
+  return (v || '').replace(/^[^:：]*[:：]/, '').replace(/[\s　]/g, '').trim();
+}
+function mapShufujob(r) {
+  const dob = (r['生年月日'] || '').trim()
+    .replace(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/, (_, y, m, d) => `${y}/${parseInt(m)}/${parseInt(d)}`);
+  const ns = ['勤務地名', '応募備考', '主な経験職種'].some(f => nightShift(r[f]) === '○') ? '○' : '';
+  return addOffice({
+    '応募日':     (r['応募日'] || '').split(' ')[0],
+    '氏名（漢字）': (r['お名前'] || '').trim(),
+    'カナ':       (r['お名前（フリガナ）'] || '').trim(),
+    '性別':       r['性別'] || '',
+    '生年月日':    dob,
+    '年齢':       calcAge(dob),
+    '都道府県名':  r['お住まいエリア（都道府県）'] || '',
+    '市区町村名':  r['お住まいエリア（市区町村）'] || '',
+    '連絡先TEL':  shufujobTel(r['電話番号']),
+    '掲載プラン':  r['課金タイプ'] || '',
+    '夜勤専従':    ns,
+    '媒体':       '主婦JOB',
+  });
+}
+
 function detectOwnMember(h) { return h.includes('ユーザーID') && h.includes('携帯電話番号') && h.includes('作成日'); }
 function mapOwnMember(r) {
   const rawDob = (r['生年月日'] || '').trim();
@@ -325,6 +352,7 @@ function detectMedia(h) {
   if (detectEkaigo(h)) return 'ekaigo';
   if (detectQmate(h)) return 'qmate';
   if (detectQbox(h)) return 'qbox';
+  if (detectShufujob(h)) return 'shufujob';
   return 'unknown';
 }
 
@@ -380,17 +408,18 @@ function processFile(file, text) {
     else if (media === 'ekaigo') mapped = mapEkaigo(row);
     else if (media === 'qmate') mapped = mapQmate(row);
     else if (media === 'qbox') mapped = mapQbox(row);
+    else if (media === 'shufujob') mapped = mapShufujob(row);
     if (mapped) { allRows.push(mapped); count++; }
   }
   return { count, media };
 }
 
 function badgeClass(m) {
-  const map = { enhaken:'badge-enhaken', baitoru:'badge-baitoru', mynavi:'badge-mynavi', ekaigo:'badge-ekaigo', qmate:'badge-qmate', qbox:'badge-qbox', own:'badge-own', own_member:'badge-own' };
+  const map = { enhaken:'badge-enhaken', baitoru:'badge-baitoru', mynavi:'badge-mynavi', ekaigo:'badge-ekaigo', qmate:'badge-qmate', qbox:'badge-qbox', shufujob:'badge-shufujob', own:'badge-own', own_member:'badge-own' };
   return map[m] || 'badge-unknown';
 }
 function mediaLabel(m) {
-  const map = { enhaken:'エン派遣', baitoru:'バイトル', mynavi:'マイナビ', ekaigo:'e介護転職', qmate:'キューメイト', qbox:'求人ボックス', own:'自社', own_member:'自社（会員登録）' };
+  const map = { enhaken:'エン派遣', baitoru:'バイトル', mynavi:'マイナビ', ekaigo:'e介護転職', qmate:'キューメイト', qbox:'求人ボックス', shufujob:'主婦JOB', own:'自社', own_member:'自社（会員登録）' };
   return map[m] || '不明';
 }
 
